@@ -71,6 +71,7 @@ def compute():
 
     # dct value:  the `fit_kmeans` function
     dct = answers["1B: fit_kmeans"] = fit_kmeans
+    result = dct
 
 
     """
@@ -78,6 +79,20 @@ def compute():
     
     Create a pdf of the plots and return in your report. 
     """
+    plt.figure(figsize=(20, 16))
+    plot_num = 1
+    
+    for dataset_label, dataset in datasets_list.items():
+        for n_clusters in [2, 3, 5, 10]:
+            plt.subplot(4, 5, plot_num)
+            labels = fit_kmeans(dataset, n_clusters)
+            plt.scatter(dataset[0][:, 0], dataset[0][:, 1], c=labels, cmap='viridis')
+            plt.title(f"{dataset_label} (k={n_clusters})")
+            plot_num += 1
+    
+    plt.tight_layout()
+    plt.savefig("kmeans_clusters.pdf")
+    answers["1C: Scatter Plots"] = "Generated and saved to kmeans_clusters.pdf"
 
     # dct value: return a dictionary of one or more abbreviated dataset names (zero or more elements) 
     # and associated k-values with correct clusters.  key abbreviations: 'nc', 'nm', 'bvv', 'add', 'b'. 
@@ -93,6 +108,19 @@ def compute():
 
     Create a pdf of the plots and return in your report. 
     """
+    sensitivity = {}
+    for dataset_label, dataset in datasets_list.items():
+        labels_list = []
+        for seed in range(42, 47):  # Using five different seeds for initialization
+            kmeans = KMeans(n_clusters=3, init='random', random_state=seed)
+            labels = kmeans.fit_predict(StandardScaler().fit_transform(dataset[0]))
+            labels_list.append(labels)
+        # Check if all elements are the same in labels_list (i.e., no sensitivity)
+        sensitivity[dataset_label] = all(np.array_equal(labels_list[0], l) for l in labels_list[1:])
+    
+    answers["1D: Sensitivity Analysis"] = sensitivity
+
+    return answers
 
     # dct value: list of dataset abbreviations
     # Look at your plots, and return your answers.
@@ -104,7 +132,11 @@ def compute():
 
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
+    start_time = time.time()
     answers = compute()
-
-    with open("part1.pkl", "wb") as f:
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time} seconds")
+    
+    # Saving the computed answers to a file
+    with open("assignment2_answers.pkl", "wb") as f:
         pickle.dump(answers, f)
