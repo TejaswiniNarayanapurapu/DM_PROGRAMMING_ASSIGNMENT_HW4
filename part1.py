@@ -10,6 +10,11 @@ from sklearn.preprocessing import StandardScaler
 from itertools import cycle, islice
 import scipy.io as io
 from scipy.cluster.hierarchy import dendrogram, linkage  #
+from sklearn.datasets import make_circles, make_moons, make_blobs
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+
+
 
 # import plotly.figure_factory as ff
 import math
@@ -29,15 +34,14 @@ In the first task, you will explore how k-Means perform on datasets with diverse
 # Change the arguments and return according to 
 # the question asked. 
 
-def fitmeans(data, clusters, seed=42):
-    features, targets = data
-   
-    normalizer = StandardScaler()
+def fit_kmeans(data, clusters, random_state=42):
+    features, _ = data
     features_normalized = normalizer.fit_transform(features)
-    means_model = KMeans(n_clusters=clusters, init='random', random_state=seed)
+    means_model = KMeans(n_clusters=clusters, init='random', random_state=random_state)
     means_model.fit(features_normalized)
     
     return means_model.labels_
+
 
 
 def compute():
@@ -84,65 +88,62 @@ def compute():
     # and associated k-values with correct clusters.  key abbreviations: 'nc', 'nm', 'bvv', 'add', 'b'. 
     # The values are the list of k for which there is success. Only return datasets where the list of cluster size k is non-empty.
     cluster_successes = {}
-cluster_failures = []
-
-fig, axes = plt.subplots(4, 5, figsize=(20, 16))
-
-for i, (dataset_id, (X, y)) in enumerate(datasets.items()):
-    for j, cluster_size in enumerate([2, 3, 5, 10]):
-        axis = axes[j, i]
-        cluster_labels = fit_kmeans((X, y), cluster_size)
-        axis.scatter(X[:, 0], X[:, 1], c=cluster_labels, cmap='viridis', s=50, alpha=0.7)
-        axis.set_title(f"{dataset_id}, k={cluster_size}")
-        axis.set_xticks(())
-        axis.set_yticks(())
+    cluster_failures = []
+    fig, axes = plt.subplots(4, 5, figsize=(20, 16))
+    for i, (dataset_id, (X, y)) in enumerate(datasets.items()):
+        for j, cluster_size in enumerate([2, 3, 5, 10]):
+            axis = axes[j, i]
+            cluster_labels = fit_kmeans((X, y), cluster_size)
+            axis.scatter(X[:, 0], X[:, 1], c=cluster_labels, cmap='viridis', s=50, alpha=0.7)
+            axis.set_title(f"{dataset_id}, k={cluster_size}")
+            axis.set_xticks(())
+            axis.set_yticks(())
         
-        # Evaluate clustering performance with silhouette score
-        silhouette_avg = silhouette_score(X, cluster_labels)
-        if silhouette_avg > 0.5:
-            if dataset_id not in cluster_successes:
-                cluster_successes[dataset_id] = []
-            cluster_successes[dataset_id].append(cluster_size)
-        else:
-            cluster_failures.append(dataset_id)
-
-plt.tight_layout()
-plt.savefig("clustering_analysis_report.pdf")
+           # Evaluate clustering performance with silhouette score
+            silhouette_avg = silhouette_score(X, cluster_labels)
+            if silhouette_avg > 0.5:
+                if dataset_id not in cluster_successes:
+                    cluster_successes[dataset_id] = []
+                    cluster_successes[dataset_id].append(cluster_size)
+            else:
+                cluster_failures.append(dataset_id)
+    plt.tight_layout()
+    plt.savefig("clustering_analysis_report.pdf")
 
 # These lines remain unchanged as per your request
-dct = answers["1C: cluster successes"] = {"xy": [3,4], "zx": [2]} 
-dct = answers["1C: cluster failures"] = ["xy"]
+    dct = answers["1C: cluster successes"] = {"xy": [3,4], "zx": [2]} 
+    dct = answers["1C: cluster failures"] = ["xy"]
 
     """
     D. Repeat 1.C a few times and comment on which (if any) datasets seem to be sensitive to the choice of initialization for the k=2,3 cases. You do not need to add the additional plots to your report.
 
     Create a pdf of the plots and return in your report. 
     """
-# Track datasets sensitive to KMeans initialization
-initialization_sensitivity = []
 
-# Performing multiple iterations to test sensitivity
-for _ in range(5):  # Iterating a set number of times
-    for dataset_key, (data_points, _) in datasets.items():
-        for num_clusters in [2, 3]:
-            # Generating labels with two different initial random states
-            labels_first_try = fit_kmeans((data_points, None), num_clusters, random_state=42)
-            labels_second_try = fit_kmeans((data_points, None), num_clusters, random_state=0)
+    initialization_sensitivity = []
+
+
+    for _ in range(5):  # Iterating a set number of time
+        for dataset_key, (data_points, _) in datasets.items():
+            for num_clusters in [2, 3]:
             
-            # Evaluating if different initializations result in different clustering outcomes
-            if not np.array_equal(labels_first_try, labels_second_try):
-                initialization_sensitivity.append(dataset_key)
-                break  # Exit loop after finding sensitivity for this dataset
-        else:
-            # If no sensitivity is detected, proceed to the next iteration
-            continue
-        # Once sensitivity is found, no need to check further for this dataset
-        break
+              labels_first_try = fit_kmeans((data_points, None), num_clusters, random_state=42)
+              labels_second_try = fit_kmeans((data_points, None), num_clusters, random_state=0)
+            
+            
+              if not np.array_equal(labels_first_try, labels_second_try):
+                  initialization_sensitivity.append(dataset_key)
+                  break  
+              else:
+            
+                continue
+        
+              break
 
-# Record the findings in the 'answers' dictionary
-answers["1D: datasets sensitive to initialization"] = initialization_sensitivity
 
-return answers
+    answers["1D: datasets sensitive to initialization"] = initialization_sensitivity
+
+    return answers
 
 
 
