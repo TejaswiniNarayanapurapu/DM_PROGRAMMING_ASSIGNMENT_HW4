@@ -1,74 +1,75 @@
-import time
-import warnings
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn import cluster, datasets, mixture
-from sklearn.datasets import make_blobs
-from sklearn.neighbors import kneighbors_graph
+from sklearn import datasets as skdatasets
 from sklearn.preprocessing import StandardScaler
-from itertools import cycle, islice
-import scipy.io as io
-from scipy.cluster.hierarchy import dendrogram, linkage  #
-
-# import plotly.figure_factory as ff
-import math
 from sklearn.cluster import AgglomerativeClustering
+from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
+from matplotlib.backends.backend_pdf import PdfPages
 import pickle
-import utils as u
 
-"""
-Part 4.	
-Evaluation of Hierarchical Clustering over Diverse Datasets:
-In this task, you will explore hierarchical clustering over different datasets. You will also evaluate different ways to merge clusters and good ways to find the cut-off point for breaking the dendrogram.
-"""
+# Adjusted the import statement for datasets to avoid naming conflict
 
-# Fill these two functions with code at this location. Do NOT move it. 
-# Change the arguments and return according to 
-# the question asked. 
+# Hierarchical Clustering Function
+def fit_hierarchical_cluster(dataset, n_clusters, linkage_type='ward'):
+    data, _ = dataset
+    scaler = StandardScaler()
+    data_scaled = scaler.fit_transform(data)
+    model = AgglomerativeClustering(n_clusters=n_clusters, linkage=linkage_type)
+    model.fit(data_scaled)
+    return model.labels_
 
-def fit_hierarchical_cluster():
-    return None
+# Modified Hierarchical Clustering with Cut-off Distance
+def fit_modified(dataset, distance_threshold, linkage_method='ward'):
+    data, _ = dataset
+    scaler = StandardScaler()
+    data_scaled = scaler.fit_transform(data)
+    linkage_matrix = linkage(data_scaled, method=linkage_method)
+    labels = fcluster(linkage_matrix, distance_threshold, criterion='distance')
+    return labels
 
-def fit_modified():
-    return None
+# Compute Cut-off Distance
+def compute_distance_threshold(data, linkage_method='ward'):
+    scaler = StandardScaler()
+    data_scaled = scaler.fit_transform(data)
+    linkage_matrix = linkage(data_scaled, method=linkage_method)
+    distances = linkage_matrix[:, 2]
+    distance_diff = np.diff(distances)
+    max_diff_index = np.argmax(distance_diff)
+    cutoff_distance = (distances[max_diff_index] + distances[max_diff_index + 1]) / 2
+    return cutoff_distance
+
+# Generate Datasets
+def generate_datasets():
+    seed = 42
+    n_samples = 100
+    datasets_dict = {
+        'Circles': skdatasets.make_circles(n_samples=n_samples, factor=.5, noise=.05, random_state=seed),
+        'Moons': skdatasets.make_moons(n_samples=n_samples, noise=.05, random_state=seed),
+        'Varied': skdatasets.make_blobs(n_samples=n_samples, cluster_std=[1.0, 2.5, 0.5], random_state=seed),
+        'Anisotropic': (np.dot(skdatasets.make_blobs(n_samples=n_samples, random_state=seed)[0], [[0.6, -0.6], [-0.4, 0.8]]), skdatasets.make_blobs(n_samples=n_samples, random_state=seed)[1]),
+        'Blobs': skdatasets.make_blobs(n_samples=n_samples, random_state=seed)
+    }
+    return datasets_dict
+
+# Plot Clusters
+def plot_clusters(datasets, pdf_filename, is_modified=False, linkage_types=['ward', 'complete', 'average', 'single']):
+    with PdfPages(pdf_filename) as pdf:
+        for name, dataset in datasets.items():
+            fig, axes = plt.subplots(1, len(linkage_types), figsize=(20, 4), squeeze=False)
+            fig.suptitle(f'{name} dataset', fontsize=16)
+            for i, linkage_type in enumerate(linkage_types):
+                if is_modified:
+                    distance_threshold = compute_distance_threshold(dataset[0], linkage_type)
+                    labels = fit_modified(dataset, distance_threshold, linkage_type)
+                else:
+                    labels = fit_hierarchical_cluster(dataset, n_clusters=2, linkage=linkage_type)
+                axes[0, i].scatter(dataset[0][:, 0], dataset[0][:, 1], c=labels, cmap='viridis', edgecolor='k')
+                axes[0, i].set_title(f'Linkage: {linkage_type}')
+            pdf.savefig(fig)
+            plt.close(fig)
 
 
-def compute():
-    answers = {}
 
-    """
-    A.	Repeat parts 1.A and 1.B with hierarchical clustering. That is, write a function called fit_hierarchical_cluster (or something similar) that takes the dataset, the linkage type and the number of clusters, that trains an AgglomerativeClustering sklearn estimator and returns the label predictions. Apply the same standardization as in part 1.B. Use the default distance metric (euclidean) and the default linkage (ward).
-    """
-
-    # Dictionary of 5 datasets. e.g., dct["nc"] = [data, labels]
-    # keys: 'nc', 'nm', 'bvv', 'add', 'b' (abbreviated datasets)
-    dct = answers["4A: datasets"] = {}
-
-    # dct value:  the `fit_hierarchical_cluster` function
-    dct = answers["4A: fit_hierarchical_cluster"] = fit_hierarchical_cluster
-
-    """
-    B.	Apply your function from 4.A and make a plot similar to 1.C with the four linkage types (single, complete, ward, centroid: rows in the figure), and use 2 clusters for all runs. Compare the results to problem 1, specifically, are there any datasets that are now correctly clustered that k-means could not handle?
-
-    Create a pdf of the plots and return in your report. 
-    """
-
-    # dct value: list of dataset abbreviations (see 1.C)
-    dct = answers["4B: cluster successes"] = [""]
-
-    """
-    C.	There are essentially two main ways to find the cut-off point for breaking the diagram: specifying the number of clusters and specifying a maximum distance. The latter is challenging to optimize for without knowing and/or directly visualizing the dendrogram, however, sometimes simple heuristics can work well. The main idea is that since the merging of big clusters usually happens when distances increase, we can assume that a large distance change between clusters means that they should stay distinct. Modify the function from part 1.A to calculate a cut-off distance before classification. Specifically, estimate the cut-off distance as the maximum rate of change of the distance between successive cluster merges (you can use the scipy.hierarchy.linkage function to calculate the linkage matrix with distances). Apply this technique to all the datasets and make a plot similar to part 4.B.
-    
-    Create a pdf of the plots and return in your report. 
-    """
-
-    # dct is the function described above in 4.C
-    dct = answers["4A: modified function"] = fit_modified
-
-    return answers
-
-
-# ----------------------------------------------------------------------
 if __name__ == "__main__":
     answers = compute()
 
