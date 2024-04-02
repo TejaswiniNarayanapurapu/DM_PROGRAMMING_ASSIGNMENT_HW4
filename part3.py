@@ -39,30 +39,52 @@ def compute():
     """
 
     # return value of scipy.io.loadmat()
-    answers["3A: toy data"] = {}
+    toy_data = io.loadmat("hierarchical_toy_data.mat")
+    answers["3A: toy data"] = toy_data
 
     """
     B.	Create a linkage matrix Z, and plot a dendrogram using the scipy.hierarchy.linkage and scipy.hierachy.dendrogram functions, with “single” linkage.
     """
 
-    # Answer: NDArray
-    answers["3B: linkage"] = np.zeros(1)
+    
+    clustering_hierarchy = linkage(toy_data['X'], 'single')
+    plot_dendrogram = dendrogram(clustering_hierarchy)
+    plt.title('Hierarchical Clustering Dendrogram')
+    plt.xlabel('Sample Index')
+    plt.ylabel('Clustering Distance')
+    plt.show()
+    answers["3B: linkage"] = clustering_hierarchy
 
     # Answer: the return value of the dendogram function, dicitonary
-    answers["3B: dendogram"] = {}
+    answers["3B: dendogram"] = plot_dendrogram
 
     """
     C.	Consider the merger of the cluster corresponding to points with index sets {I={8,2,13}} J={1,9}}. At what iteration (starting from 0) were these clusters merged? That is, what row does the merger of A correspond to in the linkage matrix Z? The rows count from 0. 
     """
 
     # Answer type: integer
-    answers["3C: iteration"] = -1
+    answers["3C: iteration"] = 4
 
     """
     D.	Write a function that takes the data and the two index sets {I,J} above, and returns the dissimilarity given by single link clustering using the Euclidian distance metric. The function should output the same value as the 3rd column of the row found in problem 2.C.
     """
     # Answer type: a function defined above
-    answers["3D: function"] = data_index_function
+    cluster_I = {8, 2, 13}
+    cluster_J = {1, 9}
+    def calculate_average_dissimilarity(data, cluster_A, cluster_B):
+        total_distance = 0
+        comparisons_count = 0
+        for item_A in cluster_A:
+            for item_B in cluster_B:
+                distance = np.linalg.norm(data[item_A] - data[item_B])
+                total_distance += distance
+                comparisons_count += 1
+        average_distance = total_distance / comparisons_count if comparisons_count > 0 else None
+        return average_distance
+    answers["3D: function"] = calculate_average_dissimilarity
+
+
+    
 
     """
     E.	In the actual algorithm, deciding which clusters to merge should consider all of the available clusters at each iteration. List all the clusters as index sets, using a list of lists, 
@@ -70,14 +92,27 @@ def compute():
     """
 
     # List the clusters. the [{0,1,2}, {3,4}, {5}, {6}, ...] represents a list of lists.
-    answers["3E: clusters"] = [{0, 0}, {0, 0}]
+    # Define the index sets I and J
+    I = {8, 2, 13}
+    J = {1, 9}
+
+    toy_data_indices = range(len(toy_data['X']))
+    clusters = [{i} for i in toy_data_indices]
+    merged_cluster = set()
+    for index in toy_data_indices:
+        if (index % 2 == 0) or (index in I) or (index in J):
+            merged_cluster.add(index)
+    clusters.append(merged_cluster)
+    updated_clusters = [{4}, {6, 14}, {0, 1, 2, 8, 9, 13}, {5}, {11}, {10}, {3}, {7}, {12}]
+    answers["Revised 3E: Initial Clusters"] = clusters
+    answers["Revised 3E: Updated Clusters"] = updated_clusters
 
     """
     F.	Single linked clustering is often criticized as producing clusters where “the rich get richer”, that is, where one cluster is continuously merging with all available points. Does your dendrogram illustrate this phenomenon?
     """
 
     # Answer type: string. Insert your explanation as a string.
-    answers["3F: rich get richer"] = ""
+    answers["3F: rich get richer"] = "Yes, rich gets richer describes the phenomenon wherein affluent individuals accumulate wealth over time. Similarly, larger clusters tend to attract smaller clusters or additional points, thereby augmenting their size further."
 
     return answers
 
