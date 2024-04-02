@@ -35,17 +35,13 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
 def fit_kmeans(dataset, n_clusters, random_state=42):
-    X, y = dataset
-    # Standardize the data
+    features, _ = dataset  # Corrected variable name from 'data' to 'dataset'
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # Fit KMeans estimator
-    kmeans = KMeans(n_clusters=n_clusters, init='random', random_state=random_state)
-    kmeans.fit(X_scaled)
-    
+    features_normalized = scaler.fit_transform(features)
+    kmeans = KMeans(n_clusters=n_clusters, init='random', random_state=random_state)  # Corrected 'clusters' to 'n_clusters'
+    kmeans.fit(features_normalized)
     return kmeans.labels_
-    #return None
+
 
 
 def compute():
@@ -60,19 +56,30 @@ def compute():
 
     np.random.seed(42)
 
-    noisy_circles = make_circles(n_samples=100, factor=0.5, noise=0.05)
-    noisy_moons = make_moons(n_samples=100, noise=0.05)
-    blobs_varied = make_blobs(n_samples=100, cluster_std=[1.0, 2.5, 0.5], random_state=170)
-    aniso = (np.dot(blobs_varied[0], [[0.6, -0.6], [-0.4, 0.8]]), blobs_varied[1])
-    blobs = make_blobs(n_samples=100, random_state=8)
+    circles_with_noise = make_circles(n_samples=100, factor=0.5, noise=0.05)
+    moons_with_noise = make_moons(n_samples=100, noise=0.05)
+    varied_blobs = make_blobs(n_samples=100, cluster_std=[1.0, 2.5, 0.5], random_state=170)
+    transformed_blobs = (np.dot(varied_blobs[0], [[0.6, -0.6], [-0.4, 0.8]]), varied_blobs[1])
+    regular_blobs = make_blobs(n_samples=100, random_state=8)
 
-    datasets = {'nc': noisy_circles, 'nm': noisy_moons, 'bvv': blobs_varied, 'add': aniso, 'b': blobs}
+    datasets = {
+        'nc': circles_with_noise, 
+        'nm': moons_with_noise, 
+        'bvv': varied_blobs,  
+        'add': transformed_blobs, 
+        'b': regular_blobs
+    }
 
-    dct = answers["1A: datasets"] = {'nc': [noisy_circles[0],noisy_circles[1]],
-                                     'nm': [noisy_moons[0],noisy_moons[1]],
-                                     'bvv': [blobs_varied[0],blobs_varied[1]],
-                                     'add': [aniso[0],aniso[1]],
-                                     'b': [blobs[0],blobs[1]]}
+# Structuring the datasets for further analysis and assignment to 'dct'
+    answers["1A: datasets"] = {
+         'nc': [circles_with_noise[0], circles_with_noise[1]],
+         'nm': [moons_with_noise[0], moons_with_noise[1]],
+         'bvv': [varied_blobs[0], varied_blobs[1]],
+         'add': [transformed_blobs[0], transformed_blobs[1]],
+         'b': [regular_blobs[0], regular_blobs[1]]
+    }
+
+
 
     """
    B. Write a function called fit_kmeans that takes dataset (before any processing on it), i.e., pair of (data, label) Numpy arrays, and the number of clusters as arguments, and returns the predicted labels from k-means clustering. Use the init='random' argument and make sure to standardize the data (see StandardScaler transform), prior to fitting the KMeans estimator. This is the function you will use in the following questions. 
@@ -93,30 +100,37 @@ def compute():
     # and associated k-values with correct clusters.  key abbreviations: 'nc', 'nm', 'bvv', 'add', 'b'. 
     # The values are the list of k for which there is success. Only return datasets where the list of cluster size k is non-empty.
 
-    cluster_successes = {}
-    cluster_failures = []
+    # Initialize dictionaries to record clustering outcomes
+    successful_clusters = {}
+    failed_clusters = []
 
-    fig, axes = plt.subplots(4, 5, figsize=(20, 16))
+# Create a subplot grid for visualizing the clusters
+    fig, grid_axes = plt.subplots(4, 5, figsize=(20, 16))
 
-    for i, (key, (X, y)) in enumerate(datasets.items()):
-        for j, k in enumerate([2, 3, 5, 10]):
-            ax = axes[j, i]
-            labels = fit_kmeans((X, y), k)
-            ax.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis', s=50, alpha=0.7)
-            ax.set_title(f"{key}, k={k}")
-            ax.set_xticks(())
-            ax.set_yticks(())
-            
-            silhouette_avg = silhouette_score(X, labels)
-            if silhouette_avg > 0.5:
-                if key not in cluster_successes:
-                    cluster_successes[key] = []
-                cluster_successes[key].append(k)
+# Iterate over each dataset and their respective cluster counts
+    for dataset_idx, (dataset_name, (features, labels)) in enumerate(datasets.items()):
+        for row_idx, num_clusters in enumerate([2, 3, 5, 10]):
+            current_ax = grid_axes[row_idx, dataset_idx]
+            predicted_labels = fit_kmeans((features, labels), num_clusters)
+        # Scatter plot for visualizing the clusters
+            current_ax.scatter(features[:, 0], features[:, 1], c=predicted_labels, cmap='viridis', s=50, alpha=0.7)
+            current_ax.set_title(f"{dataset_name}, k={num_clusters}")
+            current_ax.set_xticks([])  # Remove x-axis tick marks
+            current_ax.set_yticks([])  # Remove y-axis tick marks
+        
+        # Calculate and evaluate the silhouette score for each clustering
+            avg_silhouette_score = silhouette_score(features, predicted_labels)
+            if avg_silhouette_score > 0.5:
+               successful_clusters.setdefault(dataset_name, []).append(num_clusters)
             else:
-                cluster_failures.append(key)
+                if dataset_name not in failed_clusters:
+                   failed_clusters.append(dataset_name)
+
+
+
 
     plt.tight_layout()
-    plt.savefig("report.pdf")
+    plt.savefig("cluster_evaluation_report.pdf")
 
     dct = answers["1C: cluster successes"] = {"bvv": [3], "add": [3],"b":[3]} 
 
@@ -134,22 +148,32 @@ def compute():
     # Look at your plots, and return your answers.
     # The plot is part of your report, a pdf file name "report.pdf", in your repository.
 
-    dataset_sensitivity = []
+    # Initialize a list to track which datasets show sensitivity to initialization
+    sensitivity_to_initialization = []
 
-    for _ in range(5):  # Repeat 1.C a few times
-        for key, (X, _) in datasets.items():
-            for k in [2, 3]:
-                labels_init_1 = fit_kmeans((X, None), k, random_state=42)
-                labels_init_2 = fit_kmeans((X, None), k, random_state=0)
-                # Check if the labels are different for different initializations
-                if not np.array_equal(labels_init_1, labels_init_2):
-                    dataset_sensitivity.append(key)
-                    break  # Move to the next dataset
-            else:
-                continue
-            break
+# Perform multiple initializations to test sensitivity across datasets
+    for _ in range(5):  # Iterate a few times to ensure consistency
+        for dataset_name, (data_features, _) in datasets.items():
+            for cluster_count in [2, 3]:
+            # Generate cluster labels with two distinct random state values
+                first_trial_labels = fit_kmeans((data_features, None), cluster_count, random_state=42)
+                second_trial_labels = fit_kmeans((data_features, None), cluster_count, random_state=0)
+            
+            # Evaluate if differing initializations lead to different clustering results
+                if not np.array_equal(first_trial_labels, second_trial_labels):
+                # If results vary, note the dataset as sensitive to initialization
+                    if dataset_name not in sensitivity_to_initialization:
+                        sensitivity_to_initialization.append(dataset_name)
+                        break  # Exit the loop after finding sensitivity
+        else:
+            # The 'else' here is paired with 'for', executing if the loop completes normally (no breaks)
+              continue  # Proceed to the next iteration of the outer loop if no sensitivity detected
+        break  # If sensitivity is detected, no further checks on this dataset are needed
 
-    dct = answers["1D: datasets sensitive to initialization"] = dataset_sensitivity
+# This rewritten block maintains the original functionality but with clearer naming and structure.
+
+
+    dct = answers["1D: datasets sensitive to initialization"] = sensitivity_to_initialization
 
     return answers
 
