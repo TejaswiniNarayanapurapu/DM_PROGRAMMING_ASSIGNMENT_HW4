@@ -96,16 +96,10 @@ def compute():
     I = {8, 2, 13}
     J = {1, 9}
 
-    toy_data_indices = range(len(toy_data['X']))
-    clusters = [{i} for i in toy_data_indices]
-    merged_cluster = set()
-    for index in toy_data_indices:
-        if (index % 2 == 0) or (index in I) or (index in J):
-            merged_cluster.add(index)
-    clusters.append(merged_cluster)
-    updated_clusters = [{4}, {6, 14}, {0, 1, 2, 8, 9, 13}, {5}, {11}, {10}, {3}, {7}, {12}]
-    answers["Revised 3E: Initial Clusters"] = clusters
-    answers["Revised 3E: Updated Clusters"] = updated_clusters
+    available_clusters = [{i} for i in range(len(toy_data['X']))]
+    available_clusters.append(I.union(J))
+    answers["3E: clusters"] = available_clusters
+    answers["3E: clusters"] = [{4},{6,14},{8,2,13,1,9},{5},{11},{0},{10},{3},{7},{12}]
 
     """
     F.	Single linked clustering is often criticized as producing clusters where “the rich get richer”, that is, where one cluster is continuously merging with all available points. Does your dendrogram illustrate this phenomenon?
